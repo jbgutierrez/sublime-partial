@@ -1,0 +1,10 @@
+[
+  {
+    "caption": "Partial: Extract Partial",
+    "command": "partial_extract"
+  },
+  {
+    "caption": "Partial: Dispose Partial",
+    "command": "partial_dispose"
+  }
+]
