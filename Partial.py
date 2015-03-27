@@ -58,7 +58,7 @@ class PartialExtractCommand(sublime_plugin.TextCommand):
 
 			if not os.path.exists(folder): os.makedirs(folder)
 
-		full_path = folder + separator + '_' + partial_name + self.extension
+		full_path = folder + separator + partial_name + self.extension
 
 		if not os.path.exists(full_path):
 			partial_code = self.view.substr(self.region).encode('utf-8')
