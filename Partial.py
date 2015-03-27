@@ -3,7 +3,7 @@ import sublime, sublime_plugin
 
 TEMPLATES = {
 	'.css': "@import url('{0}');"  ,
-	'.dust': '{> "{0}" /}'         ,
+	'.dust': '{{> "{0}" /}}'       ,
 	'.erb' : "<%= render '{0}' %>" ,
 	'.haml': "= render '{0}'"      ,
 	'.html': "<%= render '{0}' %>" ,
