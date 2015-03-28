@@ -1,10 +1,12 @@
 [
   {
     "caption": "Partial: Extract Partial",
-    "command": "partial_extract"
+    "command": "partial_command",
+    "args": {"cmd": "extract_navigate"}
   },
   {
     "caption": "Partial: Dispose Partial",
-    "command": "partial_dispose"
+    "command": "partial_command",
+    "args": {"cmd": "dispose"}
   }
 ]

@@ -21,10 +21,11 @@ TEMPLATES_ROOTS = [
 TEMPLATES_ROOTS_RE = r"^(.*)(\\|\/)(" + r"|".join(TEMPLATES_ROOTS) + r")(\\|\/)"
 SEPARATOR = '/'
 
-def error(value): sublime.error_message(value)
+def error(msg): sublime.error_message(msg)
+def log(msg): sublime.status_message(msg)
 
-class PartialExtractCommand(sublime_plugin.TextCommand):
-	def run(self, edit):
+class PartialCommandCommand(sublime_plugin.TextCommand):
+	def run(self, edit, cmd='extract_navigate'):
 		self.region    = self.view.sel()[0]
 		self.edit      = edit
 		self.source    = self.view.file_name()
@@ -34,54 +35,51 @@ class PartialExtractCommand(sublime_plugin.TextCommand):
 		self.template  = TEMPLATES[self.extension]
 
 		if self.template is None: error("Unsupported file type"); return
-		if self.region.empty():
-			self.open_partial()
+
+		if cmd == 'extract_navigate':
+			if self.region.empty():
+				self.navigate()
+			else:
+				self.view.window().show_input_panel("Partial Name", partial_name, self.extract, None, None)
+		elif cmd == 'dispose':
+			self.dispose()
 		else:
-			self.view.window().show_input_panel("Partial Name", partial_name, self.extract, None, None)
+			error("Partial command not implemented yet!")
 
 	def extract(self, partial_name):
 		folder = os.path.dirname(self.source)
 
-		partial_name = re.sub(r"^_{1}([^\.]+)\..*?$", '\\1', partial_name)
-
-		if re.search(r"\/|\\", partial_name):
-			tokens       = re.search(r"^(.*)(\\|\/){1}(.*?)$", partial_name)
-			subfolder    = tokens.group(1)
-			partial_name = tokens.group(3)
-			folder      += SEPARATOR + subfolder
-
-			if not os.path.exists(folder): os.makedirs(folder)
+		match = re.search(r"^(.*)(\\|\/)", partial_name)
+		if match:
+			subfolders = folder + SEPARATOR + match.group(1)
+			if not os.path.exists(subfolders): os.makedirs(subfolders)
 
 		full_path = folder + SEPARATOR + partial_name + self.extension
 
-		if not os.path.exists(full_path):
-			partial_code = self.view.substr(self.region).encode('utf-8')
-			with open(full_path, 'w') as f: f.write(textwrap.dedent(partial_code))
+		if os.path.exists(full_path) and not sublime.ok_cancel_dialog("File exits. Override?", "Override"): return
 
-			self.view.window().open_file(full_path)
+		partial_code = self.view.substr(self.region).encode('utf-8')
+		with open(full_path, 'w') as f: f.write(textwrap.dedent(partial_code))
 
-			tokens = re.search(TEMPLATES_ROOTS_RE + "(.*)" + self.extension, full_path)
-			if tokens: partial_name = tokens.group(5)
+		self.view.window().open_file(full_path)
 
-			replacement = self.template.format(re.sub(r"(\\|\/)_", r"\1", partial_name))
-			indent = re.search(r'^(\s*)', partial_code).group(1)
-			replacement = textwrap.fill(replacement, initial_indent=indent, subsequent_indent=indent)
-			self.view.replace(self.edit, self.region, replacement)
-			msg = partial_name + ' created successfully'
-			sublime.active_window().active_view().set_status("partial_msg", msg)
+		match = re.search(TEMPLATES_ROOTS_RE + "(.*)" + self.extension, full_path)
+		if match: partial_name = match.group(5)
 
-		else:
-			error("File exits")
+		replacement = self.template.format(re.sub(r"(\\|\/)_", r"\1", partial_name))
+		indent = re.search(r'^(\s*)', partial_code).group(1)
+		replacement = textwrap.fill(replacement, initial_indent=indent, subsequent_indent=indent)
+		self.view.replace(self.edit, self.region, replacement)
+		msg = partial_name + ' created successfully'
+		log(msg)
 
-	def open_partial(self):
+	def __detect_partial_path(self):
 		pattern = r'(\s*)' + re.sub(r"\{0\}", r'(.*)', self.template)
 		line = self.view.line(self.region)
 		line_contents = self.view.substr(line)
-		matches = re.search(pattern, line_contents)
+		match = re.search(pattern, line_contents)
 
-		if not matches: error('Please select a region'); return
-
-		partial_name = matches.group(2)
+		partial_name = match.group(2)
 		folder = os.path.dirname(self.source)
 		folder = re.sub(TEMPLATES_ROOTS_RE + "(.*)", r"\1\2\3\4", folder)
 		full_path = folder + SEPARATOR + partial_name + self.extension
@@ -92,11 +90,32 @@ class PartialExtractCommand(sublime_plugin.TextCommand):
 			tokens.append(file_name)
 			full_path = '/'.join(tokens)
 
-		if os.path.exists(full_path):
+		if not os.path.exists(full_path):
+			full_path = None
+
+		return full_path
+
+	def navigate(self):
+		try:
+			full_path = self.__detect_partial_path()
 			self.view.window().open_file(full_path)
-		else:
+		except:
 			error("Partial not found")
 
-class PartialDisposeCommand(sublime_plugin.TextCommand):
-	def run(self, edit):
-		error('Not implemented yet!')
+	def dispose(self):
+		try:
+			full_path = self.__detect_partial_path()
+			with open(full_path) as f: partial_code_lines = f.readlines()
+
+			line = self.view.line(self.region)
+			line_contents = self.view.substr(line)
+			indent = re.search(r'^(\s*)', line_contents).group(1)
+
+			self.view.erase(self.edit, line)
+
+			partial_code = "".join(indent + line for line in partial_code_lines)
+			self.view.insert(self.edit, line.begin(), partial_code)
+
+			if sublime.ok_cancel_dialog("Remove File?", "Delete"): os.remove(full_path)
+		except:
+			error("Partial not found")
