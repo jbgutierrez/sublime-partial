@@ -14,18 +14,14 @@ TEMPLATES = {
 }
 
 TEMPLATES_ROOTS = [
-	# 'css',
-	# 'sass',
-	# 'styles',
-	# 'stylesheets',
 	'templates',
 	'views'
 ]
 
-TEMPLATES_ROOTS_RE = r"^.*(\\|\/)(" + r"|".join(TEMPLATES_ROOTS) + r")(\\|\/)"
+TEMPLATES_ROOTS_RE = r"^(.*)(\\|\/)(" + r"|".join(TEMPLATES_ROOTS) + r")(\\|\/)"
+SEPARATOR = '/'
 
-def error(value):
-	sublime.error_message(value)
+def error(value): sublime.error_message(value)
 
 class PartialExtractCommand(sublime_plugin.TextCommand):
 	def run(self, edit):
@@ -38,27 +34,25 @@ class PartialExtractCommand(sublime_plugin.TextCommand):
 		self.template  = TEMPLATES[self.extension]
 
 		if self.template is None: error("Unsupported file type"); return
-		if self.region.empty(): error('Please select a region'); return
-
-		self.view.window().show_input_panel("Partial Name", partial_name, self.extract, None, None)
+		if self.region.empty():
+			self.open_partial()
+		else:
+			self.view.window().show_input_panel("Partial Name", partial_name, self.extract, None, None)
 
 	def extract(self, partial_name):
 		folder = os.path.dirname(self.source)
-
-		separator = '/'
 
 		partial_name = re.sub(r"^_{1}([^\.]+)\..*?$", '\\1', partial_name)
 
 		if re.search(r"\/|\\", partial_name):
 			tokens       = re.search(r"^(.*)(\\|\/){1}(.*?)$", partial_name)
 			subfolder    = tokens.group(1)
-			separator    = tokens.group(2)
 			partial_name = tokens.group(3)
-			folder      += separator + subfolder
+			folder      += SEPARATOR + subfolder
 
 			if not os.path.exists(folder): os.makedirs(folder)
 
-		full_path = folder + separator + partial_name + self.extension
+		full_path = folder + SEPARATOR + partial_name + self.extension
 
 		if not os.path.exists(full_path):
 			partial_code = self.view.substr(self.region).encode('utf-8')
@@ -67,7 +61,7 @@ class PartialExtractCommand(sublime_plugin.TextCommand):
 			self.view.window().open_file(full_path)
 
 			tokens = re.search(TEMPLATES_ROOTS_RE + "(.*)" + self.extension, full_path)
-			if tokens: partial_name = tokens.group(4)
+			if tokens: partial_name = tokens.group(5)
 
 			replacement = self.template.format(re.sub(r"(\\|\/)_", r"\1", partial_name))
 			indent = re.search(r'^(\s*)', partial_code).group(1)
@@ -78,6 +72,30 @@ class PartialExtractCommand(sublime_plugin.TextCommand):
 
 		else:
 			error("File exits")
+
+	def open_partial(self):
+		pattern = r'(\s*)' + re.sub(r"\{0\}", r'(.*)', self.template)
+		line = self.view.line(self.region)
+		line_contents = self.view.substr(line)
+		matches = re.search(pattern, line_contents)
+
+		if not matches: error('Please select a region'); return
+
+		partial_name = matches.group(2)
+		folder = os.path.dirname(self.source)
+		folder = re.sub(TEMPLATES_ROOTS_RE + "(.*)", r"\1\2\3\4", folder)
+		full_path = folder + SEPARATOR + partial_name + self.extension
+
+		if not os.path.exists(full_path):
+			tokens = full_path.split('/')
+			file_name = '_' + tokens.pop()
+			tokens.append(file_name)
+			full_path = '/'.join(tokens)
+
+		if os.path.exists(full_path):
+			self.view.window().open_file(full_path)
+		else:
+			error("Partial not found")
 
 class PartialDisposeCommand(sublime_plugin.TextCommand):
 	def run(self, edit):
