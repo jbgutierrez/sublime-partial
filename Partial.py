@@ -61,7 +61,13 @@ class PartialCommandCommand(sublime_plugin.TextCommand):
 		partial_code = self.view.substr(self.region).encode('utf-8')
 		with open(full_path, 'w') as f: f.write(textwrap.dedent(partial_code))
 
-		self.view.window().open_file(full_path)
+		window = self.view.window()
+		view = window.active_view()
+		window.open_file(full_path)
+		window.focus_view(view)
+		sel = self.view.sel()
+		last_column = sublime.Region(sel[0].b)
+		sel.add(last_column)
 
 		match = re.search(TEMPLATES_ROOTS_RE + "(.*)" + self.extension, full_path)
 		if match: partial_name = match.group(5)
