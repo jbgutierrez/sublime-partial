@@ -1,0 +1,4 @@
+[
+  { "keys": ["alt+p"], "command": "partial_command", "args": {"cmd": "extract_navigate"}},
+  { "keys": ["shift+alt+p"], "command": "partial_command", "args": {"cmd": "dispose"}}
+]
