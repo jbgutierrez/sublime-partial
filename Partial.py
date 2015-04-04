@@ -80,7 +80,10 @@ class PartialCommandCommand(sublime_plugin.TextCommand):
 		log(msg)
 
 	def __detect_partial_path(self):
-		pattern = r'(\s*)' + re.sub(r"\{0\}", r'(.*)', self.template)
+		pattern = re.sub(r"\{0\}(.).*", r'PARTIALNAME\1', self.template)
+		pattern = re.sub(r"\{{2}", r'{', pattern)
+		pattern = re.escape(pattern)
+		pattern = re.sub(r"(.*)PARTIALNAME(.*)", r'(\s*)\1(.*)\2.*', pattern)
 		line = self.view.line(self.region)
 		line_contents = self.view.substr(line)
 		match = re.search(pattern, line_contents)
