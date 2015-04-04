@@ -54,7 +54,7 @@ class PartialCommandCommand(sublime_plugin.TextCommand):
 			subfolders = folder + SEPARATOR + match.group(1)
 			if not os.path.exists(subfolders): os.makedirs(subfolders)
 
-		full_path = folder + SEPARATOR + partial_name + self.extension
+		full_path = os.path.normpath(folder + SEPARATOR + partial_name + self.extension)
 
 		if os.path.exists(full_path) and not sublime.ok_cancel_dialog("File exits. Override?", "Override"): return
 
@@ -88,7 +88,7 @@ class PartialCommandCommand(sublime_plugin.TextCommand):
 		partial_name = match.group(2)
 		folder = os.path.dirname(self.source)
 		folder = re.sub(TEMPLATES_ROOTS_RE + "(.*)", r"\1\2\3\4", folder)
-		full_path = folder + SEPARATOR + partial_name + self.extension
+		full_path = os.path.normpath(folder + SEPARATOR + partial_name + self.extension)
 
 		if not os.path.exists(full_path):
 			tokens = full_path.split('/')
