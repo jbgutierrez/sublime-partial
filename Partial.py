@@ -72,7 +72,9 @@ class PartialCommandCommand(sublime_plugin.TextCommand):
 		match = re.search(TEMPLATES_ROOTS_RE + "(.*)" + self.extension, full_path)
 		if match: partial_name = match.group(5)
 
-		replacement = self.template.format(re.sub(r"(\\|\/)_", r"\1", partial_name))
+		replacement = self.template.format(partial_name)
+		replacement = re.sub(r"(\\|\/)+", '/', replacement) # normalize path separators
+		replacement = re.sub(r"\/_", '/', replacement) # strip leading underscore in partial name
 		indent = re.search(r'^(\s*)', partial_code).group(1)
 		replacement = textwrap.fill(replacement, initial_indent=indent, subsequent_indent=indent)
 		self.view.replace(self.edit, self.region, replacement)
